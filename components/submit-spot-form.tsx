@@ -1,25 +1,30 @@
 "use client";
 
 import { useState } from "react";
-import { GoogleMap, Marker, StandaloneSearchBox, useJsApiLoader } from "@react-google-maps/api";
-import type { Libraries } from "@react-google-maps/api";
-import { Camera, Check, MapPin, PhilippinePeso, PlusCircle } from "lucide-react";
+import { Camera, Check, MapPin, PhilippinePeso, PlusCircle, Search } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { buildTileGrid, latLngToWorld, worldToLatLng } from "@/lib/geoapify";
 import { saveLocalSpot, slugifySpotName } from "@/lib/local-spots";
 
 const defaultCenter = { lat: 14.5995, lng: 120.9842 };
-const libraries: Libraries = ["places"];
+const mapSize = { width: 388, height: 320 };
+const mapZoom = 15;
+
+type GeoapifyResult = {
+  formatted: string;
+  lat: number;
+  lon: number;
+};
 
 export function SubmitSpotForm() {
   const [center, setCenter] = useState(defaultCenter);
-  const [searchBox, setSearchBox] = useState<google.maps.places.SearchBox | null>(null);
+  const [addressQuery, setAddressQuery] = useState("");
+  const [addressResults, setAddressResults] = useState<GeoapifyResult[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-  const { isLoaded } = useJsApiLoader({
-    googleMapsApiKey: apiKey || "missing-key",
-    libraries
-  });
+  const geoapifyKey = process.env.NEXT_PUBLIC_GEOAPIFY_API_KEY;
+  const tiles = geoapifyKey ? buildTileGrid({ apiKey: geoapifyKey, center, zoom: mapZoom, ...mapSize }) : [];
+  const centerWorld = latLngToWorld(center, mapZoom);
 
   async function submitSpot(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -76,13 +81,32 @@ export function SubmitSpotForm() {
     setBusy(false);
   }
 
-  function handlePlacesChanged() {
-    const place = searchBox?.getPlaces()?.[0];
-    const location = place?.geometry?.location;
-    if (!location) return;
-    setCenter({ lat: location.lat(), lng: location.lng() });
-    const addressInput = document.querySelector<HTMLInputElement>("input[name='address']");
-    if (addressInput && place.formatted_address) addressInput.value = place.formatted_address;
+  async function searchAddress() {
+    if (!geoapifyKey || !addressQuery.trim()) return;
+    const params = new URLSearchParams({
+      text: addressQuery,
+      filter: "countrycode:ph",
+      bias: `proximity:${center.lng},${center.lat}`,
+      format: "json",
+      limit: "5",
+      apiKey: geoapifyKey
+    });
+    const response = await fetch(`https://api.geoapify.com/v1/geocode/autocomplete?${params}`);
+    const data = (await response.json()) as { results?: GeoapifyResult[] };
+    setAddressResults(data.results ?? []);
+  }
+
+  function pickAddress(result: GeoapifyResult) {
+    setCenter({ lat: result.lat, lng: result.lon });
+    setAddressQuery(result.formatted);
+    setAddressResults([]);
+  }
+
+  function handleMapClick(event: React.MouseEvent<HTMLDivElement>) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = centerWorld.x + event.clientX - rect.left - mapSize.width / 2;
+    const y = centerWorld.y + event.clientY - rect.top - mapSize.height / 2;
+    setCenter(worldToLatLng(x, y, mapZoom));
   }
 
   return (
@@ -121,23 +145,37 @@ export function SubmitSpotForm() {
         <div className="rounded-lg border border-charcoal/10 bg-white p-4 shadow-sm">
           <label className="block">
             <span className="text-sm font-bold text-charcoal">Search address</span>
-            {apiKey && isLoaded ? (
-              <StandaloneSearchBox onLoad={setSearchBox} onPlacesChanged={handlePlacesChanged}>
-                <input name="address" required className="mt-2 min-h-12 w-full rounded-md border border-charcoal/15 bg-rice px-3 text-base outline-none" placeholder="Search a street, market, or landmark" />
-              </StandaloneSearchBox>
-            ) : (
-              <input name="address" required className="mt-2 min-h-12 w-full rounded-md border border-charcoal/15 bg-rice px-3 text-base outline-none" placeholder="Address or landmark" />
-            )}
+            <div className="mt-2 flex gap-2">
+              <input name="address" value={addressQuery} onChange={(event) => setAddressQuery(event.target.value)} required className="min-h-12 w-full rounded-md border border-charcoal/15 bg-rice px-3 text-base outline-none" placeholder="Address or landmark" />
+              <button type="button" onClick={searchAddress} disabled={!geoapifyKey || !addressQuery.trim()} className="inline-flex min-h-12 w-12 items-center justify-center rounded-md bg-charcoal text-white disabled:cursor-not-allowed disabled:opacity-50" title="Search address">
+                <Search size={18} aria-hidden="true" />
+              </button>
+            </div>
+            {addressResults.length ? (
+              <div className="mt-2 overflow-hidden rounded-md border border-charcoal/10 bg-white shadow-sm">
+                {addressResults.map((result) => (
+                  <button key={`${result.lat}-${result.lon}-${result.formatted}`} type="button" onClick={() => pickAddress(result)} className="block w-full border-b border-charcoal/10 px-3 py-2 text-left text-sm font-semibold text-ink last:border-b-0 hover:bg-smoke">
+                    {result.formatted}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </label>
           <div className="mt-4 overflow-hidden rounded-md border border-charcoal/10 bg-smoke">
-            {apiKey && isLoaded ? (
-              <GoogleMap mapContainerStyle={{ width: "100%", height: 320 }} center={center} zoom={15} onClick={(event) => event.latLng && setCenter({ lat: event.latLng.lat(), lng: event.latLng.lng() })} options={{ mapTypeControl: false, streetViewControl: false }}>
-                <Marker position={center} draggable onDragEnd={(event) => event.latLng && setCenter({ lat: event.latLng.lat(), lng: event.latLng.lng() })} />
-              </GoogleMap>
+            {geoapifyKey ? (
+              <div className="relative h-80 overflow-hidden bg-[#edf6fb]" onClick={handleMapClick}>
+                {tiles.map((tile) => (
+                  <img key={tile.key} src={tile.src} alt="" className="absolute h-64 w-64 max-w-none select-none" draggable={false} style={{ left: tile.left, top: tile.top }} />
+                ))}
+                <MapPin className="absolute left-1/2 top-1/2 z-10 -ml-3 -mt-8 text-leaf drop-shadow" size={32} fill="currentColor" aria-hidden="true" />
+                <div className="absolute bottom-2 right-2 rounded bg-white/90 px-2 py-1 text-[10px] font-semibold text-ink/70">
+                  © OpenStreetMap contributors © Geoapify
+                </div>
+              </div>
             ) : (
               <div className="grid h-80 place-items-center p-5 text-center text-sm font-semibold text-ink/70">
                 <MapPin className="mb-2 text-leaf" aria-hidden="true" />
-                Add Google Maps API key for address autocomplete and draggable pin placement.
+                Add Geoapify API key for address search and map placement.
               </div>
             )}
           </div>

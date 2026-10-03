@@ -1,23 +1,22 @@
 "use client";
 
-import { GoogleMap, InfoWindow, Marker, useJsApiLoader } from "@react-google-maps/api";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import type { Libraries } from "@react-google-maps/api";
+import { MapPin } from "lucide-react";
+import { buildTileGrid, latLngToWorld } from "@/lib/geoapify";
 import type { SpotSummary } from "@/lib/types";
 import { RatingPill } from "@/components/rating";
 
 const center = { lat: 12.8797, lng: 121.774 };
-const libraries: Libraries = ["places"];
+const mapSize = { width: 880, height: 520 };
+const zoom = 6;
 
 export function MapView({ spots, height = "100%" }: { spots: SpotSummary[]; height?: string }) {
   const [selectedId, setSelectedId] = useState<string | null>(spots[0]?.id ?? null);
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  const geoapifyKey = process.env.NEXT_PUBLIC_GEOAPIFY_API_KEY;
   const selected = spots.find((spot) => spot.id === selectedId);
-  const { isLoaded } = useJsApiLoader({
-    googleMapsApiKey: apiKey || "missing-key",
-    libraries
-  });
+  const tiles = geoapifyKey ? buildTileGrid({ apiKey: geoapifyKey, center, zoom, ...mapSize }) : [];
+  const centerWorld = latLngToWorld(center, zoom);
 
   useEffect(() => {
     if (!selectedId && spots[0]) {
@@ -25,12 +24,8 @@ export function MapView({ spots, height = "100%" }: { spots: SpotSummary[]; heig
     }
   }, [selectedId, spots]);
 
-  if (!apiKey) {
+  if (!geoapifyKey) {
     return <FallbackMap spots={spots} height={height} />;
-  }
-
-  if (!isLoaded) {
-    return <div className="grid min-h-[360px] place-items-center rounded-lg border border-white/70 bg-rice/80 text-sm font-semibold text-ink/70 shadow-soft backdrop-blur-xl">Loading map...</div>;
   }
 
   if (!spots.length) {
@@ -39,22 +34,37 @@ export function MapView({ spots, height = "100%" }: { spots: SpotSummary[]; heig
 
   return (
     <div className="map-shell overflow-hidden rounded-lg border border-white/70 bg-rice/80 shadow-soft backdrop-blur-xl" style={{ height }}>
-      <GoogleMap mapContainerStyle={{ width: "100%", height: "100%" }} center={center} zoom={6} options={{ mapTypeControl: false, streetViewControl: false, fullscreenControl: false }}>
-        {spots.map((spot) => (
-          <Marker key={spot.id} position={{ lat: spot.lat, lng: spot.lng }} title={spot.name} onClick={() => setSelectedId(spot.id)} />
+      <div className="relative h-full min-h-[360px] overflow-hidden bg-[#edf6fb]">
+        {tiles.map((tile) => (
+          <img key={tile.key} src={tile.src} alt="" className="absolute h-64 w-64 max-w-none select-none" draggable={false} style={{ left: tile.left, top: tile.top }} />
         ))}
+        {spots.map((spot) => {
+          const spotWorld = latLngToWorld({ lat: spot.lat, lng: spot.lng }, zoom);
+          const left = mapSize.width / 2 + spotWorld.x - centerWorld.x;
+          const top = mapSize.height / 2 + spotWorld.y - centerWorld.y;
+
+          return (
+            <button key={spot.id} type="button" onClick={() => setSelectedId(spot.id)} className="absolute z-10 -ml-3 -mt-7 text-leaf drop-shadow focus:outline-none focus:ring-2 focus:ring-charcoal" style={{ left: `${left}px`, top: `${top}px` }} title={spot.name}>
+              <MapPin size={30} fill="currentColor" aria-hidden="true" />
+            </button>
+          );
+        })}
         {selected ? (
-          <InfoWindow position={{ lat: selected.lat, lng: selected.lng }} onCloseClick={() => setSelectedId(null)}>
-            <div className="max-w-56 space-y-2 p-1">
-              <RatingPill rating={selected.averageRating} count={selected.reviewCount} />
-              <Link href={`/spots/${selected.id}`} className="block font-semibold text-charcoal">
-                {selected.name}
-              </Link>
-              <p className="text-xs text-ink/70">{selected.address}</p>
-            </div>
-          </InfoWindow>
+          <div className="absolute left-5 top-5 z-20 max-w-64 rounded-lg border border-charcoal/10 bg-white p-3 shadow-soft">
+            <RatingPill rating={selected.averageRating} count={selected.reviewCount} />
+            <Link href={`/spots/${selected.id}`} className="mt-2 block font-semibold text-charcoal">
+              {selected.name}
+            </Link>
+            <p className="mt-1 text-xs text-ink/70">{selected.address}</p>
+            <button type="button" onClick={() => setSelectedId(null)} className="mt-2 text-xs font-bold text-leaf">
+              Close
+            </button>
+          </div>
         ) : null}
-      </GoogleMap>
+        <div className="absolute bottom-2 right-2 rounded bg-white/90 px-2 py-1 text-[10px] font-semibold text-ink/70">
+          © OpenStreetMap contributors © Geoapify
+        </div>
+      </div>
     </div>
   );
 }
@@ -68,7 +78,7 @@ function FallbackMap({ spots, height }: { spots: SpotSummary[]; height: string }
     <div className="relative overflow-hidden rounded-lg border border-white/70 bg-[#edf6fb]/90 shadow-soft backdrop-blur-xl" style={{ minHeight: height === "100%" ? 480 : height }}>
       <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(14,121,178,.14)_1px,transparent_1px),linear-gradient(rgba(14,121,178,.14)_1px,transparent_1px)] bg-[size:44px_44px]" />
       <div className="absolute left-5 top-5 rounded-lg border border-white/70 bg-rice/90 px-3 py-2 text-sm font-semibold text-charcoal shadow-sm backdrop-blur">
-        Add `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` to enable Google Maps
+        Add `NEXT_PUBLIC_GEOAPIFY_API_KEY` to enable maps
       </div>
       {spots.map((spot, index) => (
         <Link
