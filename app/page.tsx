@@ -1,6 +1,10 @@
 import { Discovery } from "@/components/discovery";
-import { spotSummaries } from "@/lib/mock-data";
+import { getSupabaseSpotSummaries } from "@/lib/supabase/spots";
 
-export default function Home() {
-  return <Discovery initialSpots={spotSummaries} />;
+export const dynamic = "force-dynamic";
+
+export default async function Home() {
+  const spots = await getSupabaseSpotSummaries();
+
+  return <Discovery initialSpots={spots} />;
 }

@@ -87,8 +87,44 @@ export function SubmitSpotForm() {
       return;
     }
 
-    const { error } = await supabase.from("streetfood_spots").insert({ ...payload, submitter_id: data.user.id });
-    setMessage(error ? error.message : "Spot submitted and published.");
+    const { data: spot, error } = await supabase
+      .from("streetfood_spots")
+      .insert({ ...payload, submitter_id: data.user.id })
+      .select("id")
+      .single();
+
+    if (error || !spot) {
+      setMessage(error ? error.message : "Spot could not be published.");
+      setBusy(false);
+      return;
+    }
+
+    const photos = form.getAll("photos").filter((file): file is File => file instanceof File && file.size > 0);
+    const photoRecords = [];
+
+    for (const photo of photos) {
+      const safeName = photo.name.replace(/[^a-z0-9_.-]/gi, "-").toLowerCase();
+      const storagePath = `${data.user.id}/${spot.id}/${Date.now()}-${safeName}`;
+      const { error: uploadError } = await supabase.storage.from("spot-photos").upload(storagePath, photo, {
+        cacheControl: "3600",
+        upsert: false
+      });
+
+      if (!uploadError) {
+        photoRecords.push({
+          spot_id: spot.id,
+          user_id: data.user.id,
+          storage_path: storagePath,
+          alt_text: `${payload.name} photo`
+        });
+      }
+    }
+
+    if (photoRecords.length) {
+      await supabase.from("spot_photos").insert(photoRecords);
+    }
+
+    setMessage(photos.length && !photoRecords.length ? "Spot published, but photos could not be uploaded." : "Spot submitted and published.");
     setBusy(false);
   }
 
@@ -148,7 +184,7 @@ export function SubmitSpotForm() {
               <p className="text-sm text-ink/65">Wire this field to Supabase Storage in production; schema and bucket policy are included.</p>
             </div>
           </div>
-          <input type="file" accept="image/*" multiple className="mt-3 block w-full text-sm text-ink/70 file:mr-3 file:min-h-11 file:rounded-md file:border-0 file:bg-charcoal file:px-4 file:text-sm file:font-bold file:text-white" />
+          <input name="photos" type="file" accept="image/*" multiple className="mt-3 block w-full text-sm text-ink/70 file:mr-3 file:min-h-11 file:rounded-md file:border-0 file:bg-charcoal file:px-4 file:text-sm file:font-bold file:text-white" />
         </div>
       </section>
 

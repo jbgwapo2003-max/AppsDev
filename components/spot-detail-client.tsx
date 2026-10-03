@@ -12,12 +12,12 @@ import { getLocalSpotById } from "@/lib/local-spots";
 import { getReviewAverage } from "@/lib/reviews";
 import type { SpotSummary } from "@/lib/types";
 
-export function SpotDetailClient({ id }: { id: string }) {
-  const [spot, setSpot] = useState<SpotSummary | null | undefined>(undefined);
+export function SpotDetailClient({ id, initialSpot }: { id: string; initialSpot?: SpotSummary | null }) {
+  const [spot, setSpot] = useState<SpotSummary | null | undefined>(initialSpot);
 
   useEffect(() => {
-    setSpot(getLocalSpotById(id) ?? null);
-  }, [id]);
+    setSpot(initialSpot ?? getLocalSpotById(id) ?? null);
+  }, [id, initialSpot]);
 
   if (spot === undefined) {
     return <main className="mx-auto max-w-7xl px-4 py-8 text-sm font-semibold text-ink/70 sm:px-6 lg:px-8">Loading spot...</main>;
