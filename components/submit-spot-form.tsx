@@ -76,6 +76,17 @@ export function SubmitSpotForm() {
       return;
     }
 
+    const { error: profileError } = await supabase.from("profiles").upsert({
+      id: data.user.id,
+      display_name: data.user.email?.split("@")[0] ?? "Kanto Finds user"
+    });
+
+    if (profileError) {
+      setMessage(`Could not prepare your profile: ${profileError.message}`);
+      setBusy(false);
+      return;
+    }
+
     const { error } = await supabase.from("streetfood_spots").insert({ ...payload, submitter_id: data.user.id });
     setMessage(error ? error.message : "Spot submitted and published.");
     setBusy(false);
