@@ -10,27 +10,70 @@ export function BookmarkButton({ spotId, compact = false }: { spotId: string; co
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    setSaved(window.localStorage.getItem(`bookmark:${spotId}`) === "true");
+    let active = true;
+
+    async function loadSavedState() {
+      const localSaved = window.localStorage.getItem(`bookmark:${spotId}`) === "true";
+      const supabase = createSupabaseBrowserClient();
+
+      if (!supabase) {
+        if (active) setSaved(localSaved);
+        return;
+      }
+
+      const { data: authData } = await supabase.auth.getUser();
+      if (!authData.user) {
+        if (active) setSaved(localSaved);
+        return;
+      }
+
+      const { data: bookmark } = await supabase
+        .from("bookmarks")
+        .select("spot_id")
+        .eq("spot_id", spotId)
+        .eq("user_id", authData.user.id)
+        .maybeSingle();
+
+      if (active) {
+        const remoteSaved = Boolean(bookmark);
+        window.localStorage.setItem(`bookmark:${spotId}`, String(localSaved || remoteSaved));
+        setSaved(localSaved || remoteSaved);
+      }
+    }
+
+    void loadSavedState();
+    return () => {
+      active = false;
+    };
   }, [spotId]);
 
   async function toggleBookmark() {
     setBusy(true);
     const next = !saved;
+    window.localStorage.setItem(`bookmark:${spotId}`, String(next));
+    setSaved(next);
     const supabase = createSupabaseBrowserClient();
 
     if (supabase) {
       const { data } = await supabase.auth.getUser();
       if (data.user) {
         if (next) {
-          await supabase.from("bookmarks").upsert({ spot_id: spotId, user_id: data.user.id });
+          const { data: existing } = await supabase
+            .from("bookmarks")
+            .select("spot_id")
+            .eq("spot_id", spotId)
+            .eq("user_id", data.user.id)
+            .maybeSingle();
+
+          if (!existing) {
+            await supabase.from("bookmarks").insert({ spot_id: spotId, user_id: data.user.id });
+          }
         } else {
           await supabase.from("bookmarks").delete().eq("spot_id", spotId).eq("user_id", data.user.id);
         }
       }
     }
 
-    window.localStorage.setItem(`bookmark:${spotId}`, String(next));
-    setSaved(next);
     setBusy(false);
   }
 
