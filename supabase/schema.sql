@@ -109,8 +109,11 @@ alter table public.reviews enable row level security;
 alter table public.review_likes enable row level security;
 alter table public.reports enable row level security;
 
+drop policy if exists "Profiles are readable" on public.profiles;
 create policy "Profiles are readable" on public.profiles for select using (true);
+drop policy if exists "Users can create own profile" on public.profiles;
 create policy "Users can create own profile" on public.profiles for insert with check (auth.uid() = id);
+drop policy if exists "Users can update own profile" on public.profiles;
 create policy "Users can update own profile" on public.profiles for update using (auth.uid() = id);
 
 create or replace function public.handle_new_user()
@@ -141,29 +144,43 @@ select id, split_part(email, '@', 1)
 from auth.users
 on conflict (id) do nothing;
 
+drop policy if exists "Visible spots are public" on public.streetfood_spots;
 create policy "Visible spots are public" on public.streetfood_spots for select using (status = 'visible');
+drop policy if exists "Authenticated users create spots" on public.streetfood_spots;
 create policy "Authenticated users create spots" on public.streetfood_spots for insert with check (auth.uid() = submitter_id);
+drop policy if exists "Submitters update own spots" on public.streetfood_spots;
 create policy "Submitters update own spots" on public.streetfood_spots for update using (auth.uid() = submitter_id);
 
+drop policy if exists "Photos are public for visible spots" on public.spot_photos;
 create policy "Photos are public for visible spots" on public.spot_photos for select using (
   exists (select 1 from public.streetfood_spots s where s.id = spot_id and s.status = 'visible')
 );
+drop policy if exists "Users add own photos" on public.spot_photos;
 create policy "Users add own photos" on public.spot_photos for insert with check (auth.uid() = user_id);
 
+drop policy if exists "Prices are public for visible spots" on public.spot_prices;
 create policy "Prices are public for visible spots" on public.spot_prices for select using (
   exists (select 1 from public.streetfood_spots s where s.id = spot_id and s.status = 'visible')
 );
+drop policy if exists "Authenticated users add prices" on public.spot_prices;
 create policy "Authenticated users add prices" on public.spot_prices for insert with check (auth.role() = 'authenticated');
 
+drop policy if exists "Users read own bookmarks" on public.bookmarks;
 create policy "Users read own bookmarks" on public.bookmarks for select using (auth.uid() = user_id);
+drop policy if exists "Users create own bookmarks" on public.bookmarks;
 create policy "Users create own bookmarks" on public.bookmarks for insert with check (auth.uid() = user_id);
+drop policy if exists "Users delete own bookmarks" on public.bookmarks;
 create policy "Users delete own bookmarks" on public.bookmarks for delete using (auth.uid() = user_id);
 
+drop policy if exists "Reviews are public" on public.reviews;
 create policy "Reviews are public" on public.reviews for select using (
   exists (select 1 from public.streetfood_spots s where s.id = spot_id and s.status = 'visible')
 );
+drop policy if exists "Users create own reviews" on public.reviews;
 create policy "Users create own reviews" on public.reviews for insert with check (auth.uid() = user_id);
+drop policy if exists "Users update own reviews" on public.reviews;
 create policy "Users update own reviews" on public.reviews for update using (auth.uid() = user_id);
+drop policy if exists "Users delete own reviews" on public.reviews;
 create policy "Users delete own reviews" on public.reviews for delete using (auth.uid() = user_id);
 
 drop policy if exists "Review likes are public" on public.review_likes;
@@ -180,6 +197,7 @@ create policy "Users create own review likes" on public.review_likes for insert 
 drop policy if exists "Users delete own review likes" on public.review_likes;
 create policy "Users delete own review likes" on public.review_likes for delete using (auth.uid() = user_id);
 
+drop policy if exists "Users create own reports" on public.reports;
 create policy "Users create own reports" on public.reports for insert with check (auth.uid() = reporter_id);
 
 insert into storage.buckets (id, name, public)
@@ -190,10 +208,12 @@ insert into storage.buckets (id, name, public)
 values ('profile-avatars', 'profile-avatars', true)
 on conflict (id) do nothing;
 
+drop policy if exists "Spot photos are publicly readable" on storage.objects;
 create policy "Spot photos are publicly readable"
 on storage.objects for select
 using (bucket_id = 'spot-photos');
 
+drop policy if exists "Authenticated users upload spot photos" on storage.objects;
 create policy "Authenticated users upload spot photos"
 on storage.objects for insert
 with check (bucket_id = 'spot-photos' and auth.role() = 'authenticated');
