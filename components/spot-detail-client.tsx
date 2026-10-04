@@ -21,12 +21,12 @@ export function SpotDetailClient({ id, initialSpot }: { id: string; initialSpot?
   }, [id, initialSpot]);
 
   if (spot === undefined) {
-    return <main className="mx-auto max-w-7xl px-4 py-8 text-sm font-semibold text-ink/70 sm:px-6 lg:px-8">Loading spot...</main>;
+    return <main className="mx-auto max-w-7xl px-4 pb-8 pt-24 text-sm font-semibold text-ink/70 sm:px-6 lg:px-8">Loading spot...</main>;
   }
 
   if (!spot) {
     return (
-      <main className="mx-auto max-w-3xl px-4 py-10 text-center sm:px-6 lg:px-8">
+      <main className="mx-auto max-w-3xl px-4 pb-10 pt-24 text-center sm:px-6 lg:px-8">
         <div className="rounded-lg border border-dashed border-charcoal/20 bg-white p-8 shadow-sm">
           <div className="mx-auto grid size-14 place-items-center rounded-md bg-leaf text-white">
             <PlusCircle size={26} aria-hidden="true" />
@@ -45,7 +45,7 @@ export function SpotDetailClient({ id, initialSpot }: { id: string; initialSpot?
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${spot.lat},${spot.lng}`;
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+    <main className="mx-auto max-w-7xl px-4 pb-6 pt-24 sm:px-6 lg:px-8">
       <Link href="/" className="inline-flex min-h-11 items-center gap-2 rounded-md px-2 text-sm font-bold text-ink hover:bg-smoke">
         <ArrowLeft size={18} aria-hidden="true" /> Back to map
       </Link>

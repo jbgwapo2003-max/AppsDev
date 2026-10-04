@@ -22,18 +22,18 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
   const isOwner = viewerId === profile.id;
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <main className="mx-auto max-w-7xl px-4 pb-8 pt-24 sm:px-6 lg:px-8">
       <section className="overflow-hidden rounded-lg border border-charcoal/10 bg-white shadow-soft">
-        <div className="h-36 bg-[linear-gradient(135deg,rgba(14,121,178,0.95),rgba(25,25,35,0.9))]" />
+        <div className="h-28 bg-[linear-gradient(135deg,rgba(14,121,178,0.95),rgba(25,25,35,0.9))] sm:h-36" />
         <div className="px-5 pb-6 sm:px-7">
-          <div className="-mt-14 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(220px,256px)] lg:items-end">
+          <div className="-mt-12 grid gap-5 sm:-mt-14 lg:grid-cols-[minmax(0,1fr)_minmax(220px,256px)] lg:items-end">
             <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start">
-              <div className="grid size-28 place-items-center overflow-hidden rounded-full border-4 border-white bg-smoke text-leaf shadow-soft">
-                {profile.avatarUrl ? <img src={profile.avatarUrl} alt={`${profile.displayName} profile picture`} className="h-full w-full object-cover" /> : <UserRound size={44} aria-hidden="true" />}
+              <div className="grid size-24 place-items-center overflow-hidden rounded-full border-4 border-white bg-smoke text-leaf shadow-soft sm:size-28">
+                {profile.avatarUrl ? <img src={profile.avatarUrl} alt={`${profile.displayName} profile picture`} className="h-full w-full object-cover" /> : <UserRound size={40} aria-hidden="true" />}
               </div>
               <div className="min-w-0 pb-1 sm:pt-14">
-                <p className="text-sm font-bold uppercase tracking-[0.18em] text-leaf">Kanto Finds profile</p>
-                <h1 className="max-w-full font-display text-4xl font-semibold leading-tight text-charcoal [overflow-wrap:anywhere]">{profile.displayName}</h1>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-leaf sm:text-sm">Kanto Finds profile</p>
+                <h1 className="max-w-full font-display text-3xl font-semibold leading-tight text-charcoal [overflow-wrap:anywhere] sm:text-4xl">{profile.displayName}</h1>
                 <p className="mt-2 max-w-2xl text-base leading-7 text-ink/75">{profile.bio || "No bio yet."}</p>
               </div>
             </div>

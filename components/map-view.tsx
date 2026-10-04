@@ -1,21 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MapPin } from "lucide-react";
 import { buildTileGrid, latLngToWorld } from "@/lib/geoapify";
 import type { SpotSummary } from "@/lib/types";
 import { RatingPill } from "@/components/rating";
 
 const center = { lat: 12.8797, lng: 121.774 };
-const mapSize = { width: 880, height: 520 };
+const defaultMapSize = { width: 880, height: 520 };
 const zoom = 6;
 
 export function MapView({ spots, height = "100%" }: { spots: SpotSummary[]; height?: string }) {
+  const mapRef = useRef<HTMLDivElement | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(spots[0]?.id ?? null);
+  const [mapSize, setMapSize] = useState(defaultMapSize);
   const geoapifyKey = process.env.NEXT_PUBLIC_GEOAPIFY_API_KEY;
   const selected = spots.find((spot) => spot.id === selectedId);
-  const tiles = geoapifyKey ? buildTileGrid({ apiKey: geoapifyKey, center, zoom, ...mapSize }) : [];
+  const tiles = useMemo(() => (geoapifyKey ? buildTileGrid({ apiKey: geoapifyKey, center, zoom, ...mapSize }) : []), [geoapifyKey, mapSize]);
   const centerWorld = latLngToWorld(center, zoom);
 
   useEffect(() => {
@@ -23,6 +25,30 @@ export function MapView({ spots, height = "100%" }: { spots: SpotSummary[]; heig
       setSelectedId(spots[0].id);
     }
   }, [selectedId, spots]);
+
+  useEffect(() => {
+    if (selectedId && !spots.some((spot) => spot.id === selectedId)) {
+      setSelectedId(spots[0]?.id ?? null);
+    }
+  }, [selectedId, spots]);
+
+  useEffect(() => {
+    const node = mapRef.current;
+    if (!node) return;
+
+    const updateSize = () => {
+      const rect = node.getBoundingClientRect();
+      setMapSize({
+        width: Math.max(320, Math.round(rect.width)),
+        height: Math.max(360, Math.round(rect.height))
+      });
+    };
+
+    updateSize();
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
 
   if (!geoapifyKey) {
     return <FallbackMap spots={spots} height={height} />;
@@ -34,7 +60,7 @@ export function MapView({ spots, height = "100%" }: { spots: SpotSummary[]; heig
 
   return (
     <div className="map-shell overflow-hidden rounded-lg border border-white/70 bg-rice/80 shadow-soft backdrop-blur-xl" style={{ height }}>
-      <div className="relative h-full min-h-[360px] overflow-hidden bg-[#edf6fb]">
+      <div ref={mapRef} className="relative h-full min-h-[360px] overflow-hidden bg-[#edf6fb] sm:min-h-[420px] lg:min-h-0">
         {tiles.map((tile) => (
           <img key={tile.key} src={tile.src} alt="" className="absolute h-64 w-64 max-w-none select-none" draggable={false} style={{ left: tile.left, top: tile.top }} />
         ))}
@@ -50,7 +76,7 @@ export function MapView({ spots, height = "100%" }: { spots: SpotSummary[]; heig
           );
         })}
         {selected ? (
-          <div className="absolute left-5 top-5 z-20 max-w-64 rounded-lg border border-charcoal/10 bg-white p-3 shadow-soft">
+          <div className="absolute left-4 right-4 top-4 z-20 rounded-lg border border-charcoal/10 bg-white p-3 shadow-soft sm:left-5 sm:right-auto sm:max-w-64">
             <RatingPill rating={selected.averageRating} count={selected.reviewCount} />
             <Link href={`/spots/${selected.id}`} className="mt-2 block font-semibold text-charcoal">
               {selected.name}
