@@ -1,5 +1,5 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { getReviewsBySpotId, mapReviews, mapSpotRow, type SpotRow } from "@/lib/supabase/spots";
+import { getReviewsBySpotId, hydrateReviewRows, mapReviews, mapSpotRow, type ReviewRow, type SpotRow } from "@/lib/supabase/spots";
 import type { Profile, Review, SpotSummary } from "@/lib/types";
 
 type ProfileRow = {
@@ -12,6 +12,7 @@ type ProfileRow = {
 
 type ProfileReviewRow = {
   id: string;
+  spot_id: string;
   user_id: string;
   comment: string;
   quantity_rating: number;
@@ -20,18 +21,6 @@ type ProfileReviewRow = {
   value_rating: number;
   service_rating: number;
   created_at: string;
-  profiles?: {
-    id: string;
-    display_name: string | null;
-    avatar_url: string | null;
-  } | { id: string; display_name: string | null; avatar_url: string | null }[] | null;
-  review_likes?: { user_id: string }[];
-  streetfood_spots?: {
-    id: string;
-    name: string;
-    city: string;
-    neighborhood: string;
-  } | { id: string; name: string; city: string; neighborhood: string }[] | null;
 };
 
 export type ProfileReview = Review & {
@@ -71,6 +60,7 @@ const submittedSpotSelect = `
 
 const profileReviewSelect = `
   id,
+  spot_id,
   user_id,
   comment,
   quantity_rating,
@@ -78,10 +68,7 @@ const profileReviewSelect = `
   cleanliness_rating,
   value_rating,
   service_rating,
-  created_at,
-  profiles(id, display_name, avatar_url),
-  review_likes(user_id),
-  streetfood_spots(id, name, city, neighborhood)
+  created_at
 `;
 
 export async function getProfilePageData(id: string): Promise<ProfilePageData | null> {
@@ -114,14 +101,24 @@ export async function getProfilePageData(id: string): Promise<ProfilePageData | 
   ]);
   const spotRows = (spots ?? []) as unknown as SpotRow[];
   const reviewsBySpotId = await getReviewsBySpotId(spotRows.map((spot) => spot.id));
+  const reviewRows = await hydrateReviewRows((reviews ?? []) as unknown as ReviewRow[]);
+  const reviewedSpotIds = Array.from(new Set(reviewRows.map((review) => review.spot_id).filter(Boolean))) as string[];
+  const { data: reviewedSpots } = reviewedSpotIds.length
+    ? await supabase
+        .from("streetfood_spots")
+        .select("id, name, city, neighborhood")
+        .in("id", reviewedSpotIds)
+        .eq("status", "visible")
+    : { data: [] };
+  const reviewedSpotsById = new Map((reviewedSpots ?? []).map((spot) => [spot.id, spot]));
 
   return {
     profile: mapProfile(profile as ProfileRow),
     viewerId,
     spots: spotRows.map((spot) => mapSpotRow({ ...spot, reviews: reviewsBySpotId.get(spot.id) ?? [] }, viewerId)),
-    reviews: ((reviews ?? []) as unknown as ProfileReviewRow[]).map((review) => {
+    reviews: (reviewRows as unknown as ProfileReviewRow[]).map((review) => {
       const [mapped] = mapReviews([review], viewerId);
-      const spot = Array.isArray(review.streetfood_spots) ? review.streetfood_spots[0] : review.streetfood_spots;
+      const spot = reviewedSpotsById.get(review.spot_id);
       return {
         ...mapped,
         spot: spot

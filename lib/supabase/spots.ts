@@ -33,7 +33,7 @@ type PriceRow = {
   notes: string | null;
 };
 
-type ReviewRow = {
+export type ReviewRow = {
   id: string;
   spot_id?: string;
   user_id: string;
@@ -49,7 +49,13 @@ type ReviewRow = {
     display_name: string | null;
     avatar_url: string | null;
   } | { id: string; display_name: string | null; avatar_url: string | null }[] | null;
-  review_likes?: { user_id: string }[];
+  review_likes?: { review_id?: string; user_id: string }[];
+};
+
+type ReviewProfileRow = {
+  id: string;
+  display_name: string | null;
+  avatar_url: string | null;
 };
 
 const spotBaseSelect = `
@@ -79,9 +85,7 @@ const reviewSelect = `
   cleanliness_rating,
   value_rating,
   service_rating,
-  created_at,
-  profiles(id, display_name, avatar_url),
-  review_likes(user_id)
+  created_at
 `;
 
 export async function getSupabaseSpotSummaries(): Promise<SpotSummary[]> {
@@ -139,7 +143,9 @@ export async function getReviewsBySpotId(spotIds: string[]) {
 
   if (error || !data) return reviewsBySpotId;
 
-  for (const review of data as unknown as ReviewRow[]) {
+  const reviews = await hydrateReviewRows(data as unknown as ReviewRow[]);
+
+  for (const review of reviews) {
     if (!review.spot_id) continue;
     const groupedReviews = reviewsBySpotId.get(review.spot_id) ?? [];
     groupedReviews.push(review);
@@ -147,6 +153,42 @@ export async function getReviewsBySpotId(spotIds: string[]) {
   }
 
   return reviewsBySpotId;
+}
+
+export async function hydrateReviewRows(reviews: ReviewRow[]) {
+  if (!reviews.length) return reviews;
+
+  const supabase = await createSupabaseServerClient();
+  if (!supabase) return reviews;
+
+  const userIds = Array.from(new Set(reviews.map((review) => review.user_id)));
+  const reviewIds = reviews.map((review) => review.id);
+
+  const [{ data: profiles }, { data: likes }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("id, display_name, avatar_url")
+      .in("id", userIds),
+    supabase
+      .from("review_likes")
+      .select("review_id, user_id")
+      .in("review_id", reviewIds)
+  ]);
+
+  const profilesById = new Map((profiles ?? []).map((profile) => [profile.id, profile as ReviewProfileRow]));
+  const likesByReviewId = new Map<string, { review_id: string; user_id: string }[]>();
+
+  for (const like of (likes ?? []) as { review_id: string; user_id: string }[]) {
+    const groupedLikes = likesByReviewId.get(like.review_id) ?? [];
+    groupedLikes.push(like);
+    likesByReviewId.set(like.review_id, groupedLikes);
+  }
+
+  return reviews.map((review) => ({
+    ...review,
+    profiles: profilesById.get(review.user_id) ?? null,
+    review_likes: likesByReviewId.get(review.id) ?? []
+  }));
 }
 
 export function mapSpotRow(spot: SpotRow, viewerId?: string): SpotSummary {

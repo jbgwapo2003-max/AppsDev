@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Star } from "lucide-react";
 import { reviewCategories } from "@/lib/reviews";
 import { StarRatingInput } from "@/components/star-rating-input";
@@ -13,6 +14,7 @@ const initialRatings = reviewCategories.reduce((result, category) => {
 }, {} as Record<ReviewCategory, number>);
 
 export function ReviewComposer({ spotId }: { spotId: string }) {
+  const router = useRouter();
   const [ratings, setRatings] = useState(initialRatings);
   const [comment, setComment] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -36,18 +38,26 @@ export function ReviewComposer({ spotId }: { spotId: string }) {
       return;
     }
 
-    const { error } = await supabase.from("reviews").upsert({
-      spot_id: spotId,
-      user_id: data.user.id,
-      comment,
-      quantity_rating: ratings.quantity,
-      quality_rating: ratings.quality,
-      cleanliness_rating: ratings.cleanliness,
-      value_rating: ratings.value,
-      service_rating: ratings.service
-    });
+    const { error } = await supabase.from("reviews").upsert(
+      {
+        spot_id: spotId,
+        user_id: data.user.id,
+        comment,
+        quantity_rating: ratings.quantity,
+        quality_rating: ratings.quality,
+        cleanliness_rating: ratings.cleanliness,
+        value_rating: ratings.value,
+        service_rating: ratings.service
+      },
+      { onConflict: "spot_id,user_id" }
+    );
 
-    setMessage(error ? error.message : "Review saved. Refresh to see updated totals.");
+    if (error) {
+      setMessage(error.message);
+    } else {
+      setMessage("Review saved.");
+      router.refresh();
+    }
     setBusy(false);
   }
 

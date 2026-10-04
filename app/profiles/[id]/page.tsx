@@ -26,18 +26,18 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
       <section className="overflow-hidden rounded-lg border border-charcoal/10 bg-white shadow-soft">
         <div className="h-36 bg-[linear-gradient(135deg,rgba(14,121,178,0.95),rgba(25,25,35,0.9))]" />
         <div className="px-5 pb-6 sm:px-7">
-          <div className="-mt-14 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+          <div className="-mt-14 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(220px,256px)] lg:items-end">
+            <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-end">
               <div className="grid size-28 place-items-center overflow-hidden rounded-full border-4 border-white bg-smoke text-leaf shadow-soft">
                 {profile.avatarUrl ? <img src={profile.avatarUrl} alt={`${profile.displayName} profile picture`} className="h-full w-full object-cover" /> : <UserRound size={44} aria-hidden="true" />}
               </div>
-              <div className="pb-1">
+              <div className="min-w-0 pb-1">
                 <p className="text-sm font-bold uppercase tracking-[0.18em] text-leaf">Kanto Finds profile</p>
-                <h1 className="font-display text-5xl font-semibold leading-none text-charcoal">{profile.displayName}</h1>
+                <h1 className="max-w-full font-display text-4xl font-semibold leading-tight text-charcoal [overflow-wrap:anywhere] sm:text-5xl">{profile.displayName}</h1>
                 <p className="mt-2 max-w-2xl text-base leading-7 text-ink/75">{profile.bio || "No bio yet."}</p>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-2 sm:w-64">
+            <div className="grid grid-cols-2 gap-2 lg:w-64 lg:justify-self-end">
               <Stat icon={<Store size={18} />} label="Posts" value={spots.length} />
               <Stat icon={<MessageSquareText size={18} />} label="Reviews" value={reviews.length} />
             </div>
