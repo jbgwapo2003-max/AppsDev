@@ -1,5 +1,5 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { mapReviews, mapSpotRow, type SpotRow } from "@/lib/supabase/spots";
+import { getReviewsBySpotId, mapReviews, mapSpotRow, type SpotRow } from "@/lib/supabase/spots";
 import type { Profile, Review, SpotSummary } from "@/lib/types";
 
 type ProfileRow = {
@@ -54,6 +54,7 @@ const profileSelect = "id, display_name, avatar_url, bio, created_at";
 
 const submittedSpotSelect = `
   id,
+  submitter_id,
   name,
   description,
   address,
@@ -65,20 +66,7 @@ const submittedSpotSelect = `
   open_hours,
   tags,
   spot_photos(id, storage_path, alt_text),
-  spot_prices(id, item, price_php, notes),
-  reviews(
-    id,
-    user_id,
-    comment,
-    quantity_rating,
-    quality_rating,
-    cleanliness_rating,
-    value_rating,
-    service_rating,
-    created_at,
-    profiles(id, display_name, avatar_url),
-    review_likes(user_id)
-  )
+  spot_prices(id, item, price_php, notes)
 `;
 
 const profileReviewSelect = `
@@ -124,11 +112,13 @@ export async function getProfilePageData(id: string): Promise<ProfilePageData | 
       .eq("user_id", id)
       .order("created_at", { ascending: false })
   ]);
+  const spotRows = (spots ?? []) as unknown as SpotRow[];
+  const reviewsBySpotId = await getReviewsBySpotId(spotRows.map((spot) => spot.id));
 
   return {
     profile: mapProfile(profile as ProfileRow),
     viewerId,
-    spots: ((spots ?? []) as unknown as SpotRow[]).map((spot) => mapSpotRow(spot, viewerId)),
+    spots: spotRows.map((spot) => mapSpotRow({ ...spot, reviews: reviewsBySpotId.get(spot.id) ?? [] }, viewerId)),
     reviews: ((reviews ?? []) as unknown as ProfileReviewRow[]).map((review) => {
       const [mapped] = mapReviews([review], viewerId);
       const spot = Array.isArray(review.streetfood_spots) ? review.streetfood_spots[0] : review.streetfood_spots;

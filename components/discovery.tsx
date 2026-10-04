@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight, Filter, ListFilter, MapPinned, Menu, Play, PlusCircle, Search } from "lucide-react";
+import { ArrowUpRight, Check, Filter, ListFilter, MapPinned, Menu, Play, PlusCircle, Search, Tag, X } from "lucide-react";
 import { MapView } from "@/components/map-view";
 import { SpotCard } from "@/components/spot-card";
 import { getLocalSpots } from "@/lib/local-spots";
@@ -12,8 +12,14 @@ import type { SpotSummary } from "@/lib/types";
 export function Discovery({ initialSpots }: { initialSpots: SpotSummary[] }) {
   const [spots, setSpots] = useState(initialSpots);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const topTags = useMemo(() => Array.from(new Set(spots.flatMap((spot) => spot.tags))).slice(0, 7), [spots]);
+  const allTags = useMemo(() => Array.from(new Set(spots.flatMap((spot) => spot.tags))).sort((a, b) => a.localeCompare(b)), [spots]);
+  const filteredSpots = useMemo(() => filterSpots(spots, searchQuery, selectedTags), [searchQuery, selectedTags, spots]);
   const featuredSpot = spots[0];
+  const hasActiveFilters = Boolean(searchQuery.trim()) || selectedTags.length > 0;
 
   useEffect(() => {
     setSpots([...getLocalSpots(), ...initialSpots]);
@@ -25,9 +31,43 @@ export function Discovery({ initialSpots }: { initialSpots: SpotSummary[] }) {
     return () => window.clearTimeout(loaderTimer);
   }, [initialSpots]);
 
+  useEffect(() => {
+    if (!isSearchOpen) return;
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsSearchOpen(false);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isSearchOpen]);
+
+  function toggleTag(tag: string) {
+    setSelectedTags((currentTags) => (currentTags.includes(tag) ? currentTags.filter((item) => item !== tag) : [...currentTags, tag]));
+  }
+
+  function clearFilters() {
+    setSearchQuery("");
+    setSelectedTags([]);
+  }
+
   return (
     <>
       {isLoading ? <NewtonsCradleLoader /> : null}
+      {isSearchOpen ? (
+        <SearchOverlay
+          allTags={allTags}
+          query={searchQuery}
+          results={filteredSpots}
+          selectedTags={selectedTags}
+          onClear={clearFilters}
+          onClose={() => setIsSearchOpen(false)}
+          onQueryChange={setSearchQuery}
+          onToggleTag={toggleTag}
+        />
+      ) : null}
 
       <IntroHero featuredSpot={featuredSpot} />
 
@@ -37,31 +77,37 @@ export function Discovery({ initialSpots }: { initialSpots: SpotSummary[] }) {
             <p className="text-sm font-bold uppercase tracking-[0.18em] text-chili">Philippines streetfood guide</p>
             <h1 className="mt-2 font-display text-4xl font-semibold leading-tight text-charcoal sm:text-5xl">Build the map from real finds.</h1>
             <p className="mt-3 text-base leading-7 text-ink/75">No generated food spots are shown here. Add a stall with photos, prices, map pin, and review categories to start the community guide.</p>
-            <div className="mt-5 flex min-h-12 items-center gap-3 rounded-lg border border-charcoal/10 bg-rice/80 px-3 shadow-sm">
+            <button type="button" onClick={() => setIsSearchOpen(true)} className="mt-5 flex min-h-12 w-full items-center gap-3 rounded-lg border border-charcoal/10 bg-rice/80 px-3 text-left shadow-sm transition hover:border-leaf/40 hover:bg-white focus:outline-none focus:ring-2 focus:ring-leaf">
               <Search size={20} className="text-leaf" aria-hidden="true" />
-              <input className="h-12 w-full bg-transparent text-base outline-none placeholder:text-ink/45" placeholder="Search user-added spots..." aria-label="Search streetfood spots" />
-            </div>
+              <span className="text-base text-ink/45">{hasActiveFilters ? `${filteredSpots.length} spot${filteredSpots.length === 1 ? "" : "s"} match your search` : "Search user-added spots..."}</span>
+            </button>
           </div>
 
           <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar" aria-label="Popular filters">
-            <button className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg bg-charcoal px-4 text-sm font-bold text-rice shadow-sm">
+            <button type="button" onClick={clearFilters} className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg bg-charcoal px-4 text-sm font-bold text-rice shadow-sm">
               <ListFilter size={17} aria-hidden="true" /> All spots
             </button>
             {topTags.map((tag) => (
-              <button key={tag} className="min-h-11 shrink-0 rounded-lg border border-charcoal/10 bg-rice/80 px-4 text-sm font-bold text-charcoal shadow-sm backdrop-blur hover:bg-white">
+              <button
+                key={tag}
+                type="button"
+                onClick={() => toggleTag(tag)}
+                className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border px-4 text-sm font-bold shadow-sm backdrop-blur ${selectedTags.includes(tag) ? "border-leaf bg-leaf text-white" : "border-charcoal/10 bg-rice/80 text-charcoal hover:bg-white"}`}
+              >
+                {selectedTags.includes(tag) ? <Check size={16} aria-hidden="true" /> : null}
                 {tag}
               </button>
             ))}
           </div>
 
-          {spots.length ? (
+          {filteredSpots.length ? (
             <div className="grid gap-4">
-              {spots.map((spot) => (
+              {filteredSpots.map((spot) => (
                 <SpotCard key={spot.id} spot={spot} />
               ))}
             </div>
           ) : (
-            <EmptySpots />
+            hasActiveFilters ? <EmptySearch onClear={clearFilters} /> : <EmptySpots />
           )}
         </section>
 
@@ -71,13 +117,110 @@ export function Discovery({ initialSpots }: { initialSpots: SpotSummary[] }) {
               <MapPinned size={18} aria-hidden="true" /> Map view
             </span>
             <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-leaf">
-              <Filter size={15} aria-hidden="true" /> {spots.length} finds
+              <Filter size={15} aria-hidden="true" /> {filteredSpots.length} finds
             </span>
           </div>
-          <MapView spots={spots} height="100%" />
+          <MapView spots={filteredSpots} height="100%" />
         </section>
       </main>
     </>
+  );
+}
+
+function SearchOverlay({
+  allTags,
+  query,
+  results,
+  selectedTags,
+  onClear,
+  onClose,
+  onQueryChange,
+  onToggleTag
+}: {
+  allTags: string[];
+  query: string;
+  results: SpotSummary[];
+  selectedTags: string[];
+  onClear: () => void;
+  onClose: () => void;
+  onQueryChange: (query: string) => void;
+  onToggleTag: (tag: string) => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 bg-charcoal/55 p-4 backdrop-blur-xl" role="dialog" aria-modal="true" aria-label="Search streetfood spots">
+      <div className="mx-auto mt-20 max-w-4xl overflow-hidden rounded-lg border border-white/70 bg-rice shadow-soft">
+        <div className="flex items-center gap-3 border-b border-charcoal/10 bg-white px-4 py-3">
+          <Search size={22} className="shrink-0 text-leaf" aria-hidden="true" />
+          <input
+            autoFocus
+            value={query}
+            onChange={(event) => onQueryChange(event.target.value)}
+            className="min-h-12 w-full bg-transparent text-lg font-semibold text-charcoal outline-none placeholder:text-ink/45"
+            placeholder="Search Bambi, BBQ, Cebu, spicy..."
+            aria-label="Search by stall name, place, description, or tag"
+          />
+          <button type="button" onClick={onClose} className="grid min-h-11 min-w-11 place-items-center rounded-md text-ink/70 hover:bg-smoke hover:text-charcoal" aria-label="Close search">
+            <X size={20} aria-hidden="true" />
+          </button>
+        </div>
+
+        <div className="grid max-h-[70vh] gap-0 overflow-hidden lg:grid-cols-[260px_1fr]">
+          <aside className="border-b border-charcoal/10 bg-white/70 p-4 lg:border-b-0 lg:border-r">
+            <div className="flex items-center justify-between gap-3">
+              <p className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[0.16em] text-leaf">
+                <Tag size={16} aria-hidden="true" /> Tags
+              </p>
+              {query || selectedTags.length ? (
+                <button type="button" onClick={onClear} className="min-h-9 rounded-md px-2 text-sm font-bold text-charcoal hover:bg-smoke">
+                  Clear
+                </button>
+              ) : null}
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {allTags.length ? (
+                allTags.map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => onToggleTag(tag)}
+                    className={`inline-flex min-h-9 items-center gap-1.5 rounded-md border px-3 text-sm font-bold ${selectedTags.includes(tag) ? "border-leaf bg-leaf text-white" : "border-charcoal/10 bg-rice text-charcoal hover:bg-smoke"}`}
+                  >
+                    {selectedTags.includes(tag) ? <Check size={14} aria-hidden="true" /> : null}
+                    {tag}
+                  </button>
+                ))
+              ) : (
+                <p className="text-sm leading-6 text-ink/65">Add tags to spots and they will appear here.</p>
+              )}
+            </div>
+          </aside>
+
+          <section className="overflow-y-auto p-4">
+            <p className="mb-3 text-sm font-semibold text-ink/65">
+              {results.length} spot{results.length === 1 ? "" : "s"} found
+            </p>
+            {results.length ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {results.map((spot) => (
+                  <Link key={spot.id} href={`/spots/${spot.id}`} onClick={onClose} className="rounded-lg border border-charcoal/10 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-soft focus:outline-none focus:ring-2 focus:ring-leaf">
+                    <p className="font-display text-2xl font-semibold leading-tight text-charcoal">{spot.name}</p>
+                    <p className="mt-1 text-sm text-ink/65">{spot.neighborhood}, {spot.city}</p>
+                    <p className="mt-3 line-clamp-2 text-sm leading-6 text-ink/75">{spot.description}</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {spot.tags.slice(0, 4).map((tag) => (
+                        <span key={tag} className="rounded-md bg-smoke px-2.5 py-1 text-xs font-bold text-ink">{tag}</span>
+                      ))}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <EmptySearch onClear={onClear} />
+            )}
+          </section>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -185,6 +328,22 @@ function spotsLabel(featuredSpot?: SpotSummary) {
   return featuredSpot.priceRange;
 }
 
+function filterSpots(spots: SpotSummary[], query: string, selectedTags: string[]) {
+  const cleanQuery = query.trim().toLowerCase();
+  const cleanTags = selectedTags.map((tag) => tag.toLowerCase());
+
+  return spots.filter((spot) => {
+    const matchesQuery =
+      !cleanQuery ||
+      [spot.name, spot.description, spot.address, spot.city, spot.neighborhood, spot.priceRange, spot.openHours, ...spot.tags]
+        .filter(Boolean)
+        .some((value) => value.toLowerCase().includes(cleanQuery));
+    const matchesTags = !cleanTags.length || spot.tags.some((tag) => cleanTags.includes(tag.toLowerCase()));
+
+    return matchesQuery && matchesTags;
+  });
+}
+
 function EmptySpots() {
   return (
     <div className="rounded-lg border border-dashed border-charcoal/20 bg-rice/80 p-8 text-center shadow-soft backdrop-blur-xl">
@@ -196,6 +355,18 @@ function EmptySpots() {
       <Link href="/submit" className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-lg bg-leaf px-4 text-sm font-bold text-white shadow-pin hover:bg-leaf/90">
         <PlusCircle size={18} aria-hidden="true" /> Share a spot
       </Link>
+    </div>
+  );
+}
+
+function EmptySearch({ onClear }: { onClear: () => void }) {
+  return (
+    <div className="rounded-lg border border-dashed border-charcoal/20 bg-white p-6 text-center shadow-sm">
+      <h2 className="font-display text-3xl font-semibold text-charcoal">No matching spots</h2>
+      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-ink/70">Try another name, place, or tag. Multiple selected tags show stalls that have any of those tags.</p>
+      <button type="button" onClick={onClear} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-md bg-leaf px-4 text-sm font-bold text-white shadow-pin hover:bg-leaf/90">
+        Clear search
+      </button>
     </div>
   );
 }

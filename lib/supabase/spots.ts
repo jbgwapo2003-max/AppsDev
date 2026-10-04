@@ -4,6 +4,7 @@ import type { Review, SpotPhoto, SpotPrice, SpotSummary } from "@/lib/types";
 
 export type SpotRow = {
   id: string;
+  submitter_id?: string;
   name: string;
   description: string;
   address: string;
@@ -34,6 +35,7 @@ type PriceRow = {
 
 type ReviewRow = {
   id: string;
+  spot_id?: string;
   user_id: string;
   comment: string;
   quantity_rating: number;
@@ -50,8 +52,9 @@ type ReviewRow = {
   review_likes?: { user_id: string }[];
 };
 
-const spotSelect = `
+const spotBaseSelect = `
   id,
+  submitter_id,
   name,
   description,
   address,
@@ -63,20 +66,22 @@ const spotSelect = `
   open_hours,
   tags,
   spot_photos(id, storage_path, alt_text),
-  spot_prices(id, item, price_php, notes),
-  reviews(
-    id,
-    user_id,
-    comment,
-    quantity_rating,
-    quality_rating,
-    cleanliness_rating,
-    value_rating,
-    service_rating,
-    created_at,
-    profiles(id, display_name, avatar_url),
-    review_likes(user_id)
-  )
+  spot_prices(id, item, price_php, notes)
+`;
+
+const reviewSelect = `
+  id,
+  spot_id,
+  user_id,
+  comment,
+  quantity_rating,
+  quality_rating,
+  cleanliness_rating,
+  value_rating,
+  service_rating,
+  created_at,
+  profiles(id, display_name, avatar_url),
+  review_likes(user_id)
 `;
 
 export async function getSupabaseSpotSummaries(): Promise<SpotSummary[]> {
@@ -87,13 +92,16 @@ export async function getSupabaseSpotSummaries(): Promise<SpotSummary[]> {
 
   const { data, error } = await supabase
     .from("streetfood_spots")
-    .select(spotSelect)
+    .select(spotBaseSelect)
     .eq("status", "visible")
     .order("created_at", { ascending: false });
 
   if (error || !data) return [];
 
-  return (data as unknown as SpotRow[]).map((spot) => mapSpotRow(spot, viewerId));
+  const spots = data as unknown as SpotRow[];
+  const reviewsBySpotId = await getReviewsBySpotId(spots.map((spot) => spot.id));
+
+  return spots.map((spot) => mapSpotRow({ ...spot, reviews: reviewsBySpotId.get(spot.id) ?? [] }, viewerId));
 }
 
 export async function getSupabaseSpotById(id: string): Promise<SpotSummary | null> {
@@ -104,14 +112,41 @@ export async function getSupabaseSpotById(id: string): Promise<SpotSummary | nul
 
   const { data, error } = await supabase
     .from("streetfood_spots")
-    .select(spotSelect)
+    .select(spotBaseSelect)
     .eq("id", id)
     .eq("status", "visible")
     .maybeSingle();
 
   if (error || !data) return null;
 
-  return mapSpotRow(data as unknown as SpotRow, viewerId);
+  const reviewsBySpotId = await getReviewsBySpotId([id]);
+
+  return mapSpotRow({ ...(data as unknown as SpotRow), reviews: reviewsBySpotId.get(id) ?? [] }, viewerId);
+}
+
+export async function getReviewsBySpotId(spotIds: string[]) {
+  const reviewsBySpotId = new Map<string, ReviewRow[]>();
+  if (!spotIds.length) return reviewsBySpotId;
+
+  const supabase = await createSupabaseServerClient();
+  if (!supabase) return reviewsBySpotId;
+
+  const { data, error } = await supabase
+    .from("reviews")
+    .select(reviewSelect)
+    .in("spot_id", spotIds)
+    .order("created_at", { ascending: false });
+
+  if (error || !data) return reviewsBySpotId;
+
+  for (const review of data as unknown as ReviewRow[]) {
+    if (!review.spot_id) continue;
+    const groupedReviews = reviewsBySpotId.get(review.spot_id) ?? [];
+    groupedReviews.push(review);
+    reviewsBySpotId.set(review.spot_id, groupedReviews);
+  }
+
+  return reviewsBySpotId;
 }
 
 export function mapSpotRow(spot: SpotRow, viewerId?: string): SpotSummary {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Camera, Check, MapPin, PhilippinePeso, PlusCircle, Search } from "lucide-react";
+import { Camera, Check, MapPin, PhilippinePeso, PlusCircle, Search, X } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { buildTileGrid, latLngToWorld, worldToLatLng } from "@/lib/geoapify";
 import { saveLocalSpot, slugifySpotName } from "@/lib/local-spots";
@@ -9,6 +9,7 @@ import { saveLocalSpot, slugifySpotName } from "@/lib/local-spots";
 const defaultCenter = { lat: 14.5995, lng: 120.9842 };
 const mapSize = { width: 388, height: 320 };
 const mapZoom = 15;
+const suggestedTags = ["BBQ", "Siomai", "Tusok-tusok", "Fried", "Sweet", "Spicy", "Dinner", "Budget"];
 
 type GeoapifyResult = {
   formatted: string;
@@ -22,6 +23,8 @@ export function SubmitSpotForm() {
   const [addressResults, setAddressResults] = useState<GeoapifyResult[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
   const geoapifyKey = process.env.NEXT_PUBLIC_GEOAPIFY_API_KEY;
   const tiles = geoapifyKey ? buildTileGrid({ apiKey: geoapifyKey, center, zoom: mapZoom, ...mapSize }) : [];
   const centerWorld = latLngToWorld(center, mapZoom);
@@ -40,7 +43,7 @@ export function SubmitSpotForm() {
       neighborhood: String(form.get("neighborhood")),
       price_range: String(form.get("priceRange")),
       open_hours: String(form.get("openHours")),
-      tags: String(form.get("tags")).split(",").map((tag) => tag.trim()).filter(Boolean),
+      tags: parseTags(String(form.get("tags"))),
       lat: center.lat,
       lng: center.lng,
       status: "visible"
@@ -156,6 +159,23 @@ export function SubmitSpotForm() {
     setCenter(worldToLatLng(x, y, mapZoom));
   }
 
+  function addTag(tag: string) {
+    const cleanTag = tag.trim().replace(/\s+/g, " ");
+    if (!cleanTag) return;
+    setTags((currentTags) => (currentTags.some((item) => item.toLowerCase() === cleanTag.toLowerCase()) ? currentTags : [...currentTags, cleanTag]));
+    setTagInput("");
+  }
+
+  function removeTag(tag: string) {
+    setTags((currentTags) => currentTags.filter((item) => item !== tag));
+  }
+
+  function handleTagKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key !== "Enter" && event.key !== ",") return;
+    event.preventDefault();
+    addTag(tagInput);
+  }
+
   return (
     <form onSubmit={submitSpot} className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_420px]">
       <section className="space-y-5 rounded-lg border border-charcoal/10 bg-white p-5 shadow-soft sm:p-7">
@@ -170,7 +190,40 @@ export function SubmitSpotForm() {
           <Field name="neighborhood" label="Neighborhood" placeholder="Quiapo" required />
           <Field name="priceRange" label="Price range" placeholder="₱20-₱100" icon={<PhilippinePeso size={18} />} required />
           <Field name="openHours" label="Open hours" placeholder="4:00 PM - 11:00 PM" required />
-          <Field name="tags" label="Tags" placeholder="BBQ, Isaw, Dinner" required />
+        </div>
+        <div>
+          <label htmlFor="spot-tags" className="text-sm font-bold text-charcoal">Tags</label>
+          <input type="hidden" name="tags" value={tags.join(",")} />
+          <div className="mt-2 rounded-md border border-charcoal/15 bg-rice p-3">
+            <div className="flex flex-wrap gap-2">
+              {tags.map((tag) => (
+                <span key={tag} className="inline-flex min-h-9 items-center gap-1.5 rounded-md bg-leaf px-3 text-sm font-bold text-white">
+                  {tag}
+                  <button type="button" onClick={() => removeTag(tag)} className="grid size-6 place-items-center rounded-full text-white/80 hover:bg-white/15 hover:text-white" aria-label={`Remove ${tag} tag`}>
+                    <X size={14} aria-hidden="true" />
+                  </button>
+                </span>
+              ))}
+              <input
+                id="spot-tags"
+                value={tagInput}
+                onChange={(event) => setTagInput(event.target.value)}
+                onBlur={() => addTag(tagInput)}
+                onKeyDown={handleTagKeyDown}
+                className="min-h-9 min-w-[12rem] flex-1 bg-transparent text-base outline-none placeholder:text-ink/45"
+                placeholder={tags.length ? "Add another tag" : "Type a tag, then press Enter"}
+                aria-describedby="spot-tags-help"
+              />
+            </div>
+          </div>
+          <p id="spot-tags-help" className="mt-2 text-sm text-ink/65">Use tags for foods, cravings, or meal times so people can filter your stall in Explore.</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {suggestedTags.map((tag) => (
+              <button key={tag} type="button" onClick={() => addTag(tag)} className="min-h-9 rounded-md border border-charcoal/10 bg-white px-3 text-sm font-bold text-charcoal shadow-sm hover:bg-smoke">
+                {tag}
+              </button>
+            ))}
+          </div>
         </div>
         <label className="block">
           <span className="text-sm font-bold text-charcoal">Description</span>
@@ -235,6 +288,10 @@ export function SubmitSpotForm() {
       </aside>
     </form>
   );
+}
+
+function parseTags(value: string) {
+  return Array.from(new Set(value.split(",").map((tag) => tag.trim()).filter(Boolean)));
 }
 
 function Field({ name, label, placeholder, icon, required }: { name: string; label: string; placeholder: string; icon?: React.ReactNode; required?: boolean }) {
