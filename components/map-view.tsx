@@ -59,7 +59,7 @@ export function MapView({ spots, height = "100%" }: { spots: SpotSummary[]; heig
   }
 
   return (
-    <div className="map-shell overflow-hidden rounded-lg border border-white/70 bg-rice/80 shadow-soft backdrop-blur-xl" style={{ height }}>
+    <div className="map-shell max-w-full overflow-hidden rounded-lg border border-white/70 bg-rice/80 shadow-soft backdrop-blur-xl" style={{ height }}>
       <div ref={mapRef} className="relative h-full min-h-[360px] overflow-hidden bg-[#edf6fb] sm:min-h-[420px] lg:min-h-0">
         {tiles.map((tile) => (
           <img key={tile.key} src={tile.src} alt="" className="absolute h-64 w-64 max-w-none select-none" draggable={false} style={{ left: tile.left, top: tile.top }} />
@@ -78,7 +78,7 @@ export function MapView({ spots, height = "100%" }: { spots: SpotSummary[]; heig
         {selected ? (
           <div className="absolute left-4 right-4 top-4 z-20 rounded-lg border border-charcoal/10 bg-white p-3 shadow-soft sm:left-5 sm:right-auto sm:max-w-64">
             <RatingPill rating={selected.averageRating} count={selected.reviewCount} />
-            <Link href={`/spots/${selected.id}`} className="mt-2 block font-semibold text-charcoal">
+            <Link href={`/spots/${selected.id}`} className="mt-2 block font-semibold text-charcoal [overflow-wrap:anywhere]">
               {selected.name}
             </Link>
             <p className="mt-1 text-xs text-ink/70">{selected.address}</p>
@@ -101,7 +101,7 @@ function FallbackMap({ spots, height }: { spots: SpotSummary[]; height: string }
   }
 
   return (
-    <div className="relative overflow-hidden rounded-lg border border-white/70 bg-[#edf6fb]/90 shadow-soft backdrop-blur-xl" style={{ minHeight: height === "100%" ? 480 : height }}>
+    <div className="relative max-w-full overflow-hidden rounded-lg border border-white/70 bg-[#edf6fb]/90 shadow-soft backdrop-blur-xl" style={{ minHeight: height === "100%" ? 380 : height }}>
       <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(14,121,178,.14)_1px,transparent_1px),linear-gradient(rgba(14,121,178,.14)_1px,transparent_1px)] bg-[size:44px_44px]" />
       <div className="absolute left-5 top-5 rounded-lg border border-white/70 bg-rice/90 px-3 py-2 text-sm font-semibold text-charcoal shadow-sm backdrop-blur">
         Add `NEXT_PUBLIC_GEOAPIFY_API_KEY` to enable maps
@@ -122,7 +122,7 @@ function FallbackMap({ spots, height }: { spots: SpotSummary[]; height: string }
 
 function EmptyMap({ height }: { height: string }) {
   return (
-    <div className="relative overflow-hidden rounded-lg border border-white/70 bg-[#edf6fb]/90 shadow-soft backdrop-blur-xl" style={{ minHeight: height === "100%" ? 480 : height }}>
+    <div className="relative max-w-full overflow-hidden rounded-lg border border-white/70 bg-[#edf6fb]/90 shadow-soft backdrop-blur-xl" style={{ minHeight: height === "100%" ? 380 : height }}>
       <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(14,121,178,.14)_1px,transparent_1px),linear-gradient(rgba(14,121,178,.14)_1px,transparent_1px)] bg-[size:44px_44px]" />
       <div className="absolute inset-x-5 top-5 rounded-lg border border-white/70 bg-rice/90 px-4 py-3 text-sm font-semibold text-charcoal shadow-sm backdrop-blur">
         No pins yet. Add the first streetfood location to place it on the map.

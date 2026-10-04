@@ -9,7 +9,7 @@ export function SpotCard({ spot, compact = false }: { spot: SpotSummary; compact
   const photo = spot.photos[0] ?? { url: "/photos/spot-placeholder.svg", alt: `${spot.name} photo placeholder` };
 
   return (
-    <article className="group overflow-hidden rounded-lg border border-charcoal/10 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-soft">
+    <article className="group min-w-0 overflow-hidden rounded-lg border border-charcoal/10 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-soft">
       <Link href={`/spots/${spot.id}`} className="block focus:outline-none focus:ring-2 focus:ring-leaf">
         <div className="relative aspect-[4/3] overflow-hidden bg-smoke">
           <Image src={photo.url} alt={photo.alt} fill sizes="(min-width: 1024px) 360px, 100vw" className="object-cover transition duration-300 group-hover:scale-105" />
@@ -19,13 +19,13 @@ export function SpotCard({ spot, compact = false }: { spot: SpotSummary; compact
         </div>
       </Link>
       <div className="space-y-4 p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <Link href={`/spots/${spot.id}`} className="font-display text-2xl font-semibold leading-tight text-charcoal hover:text-leaf">
+        <div className="flex min-w-0 items-start justify-between gap-3">
+          <div className="min-w-0">
+            <Link href={`/spots/${spot.id}`} className="font-display text-2xl font-semibold leading-tight text-charcoal [overflow-wrap:anywhere] hover:text-leaf">
               {spot.name}
             </Link>
-            <p className="mt-1 flex items-center gap-1.5 text-sm text-ink/70">
-              <MapPin size={15} aria-hidden="true" /> {spot.neighborhood}, {spot.city}
+            <p className="mt-1 flex min-w-0 items-center gap-1.5 text-sm text-ink/70">
+              <MapPin size={15} className="shrink-0" aria-hidden="true" /> <span className="min-w-0 truncate">{spot.neighborhood}, {spot.city}</span>
             </p>
           </div>
           <BookmarkButton spotId={spot.id} compact />
@@ -38,12 +38,12 @@ export function SpotCard({ spot, compact = false }: { spot: SpotSummary; compact
             </span>
           ))}
         </div>
-        <div className="grid grid-cols-2 gap-2 border-t border-charcoal/10 pt-3 text-sm text-ink/75">
-          <span className="flex items-center gap-1.5">
-            <Utensils size={15} aria-hidden="true" /> {spot.priceRange}
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2 border-t border-charcoal/10 pt-3 text-sm text-ink/75">
+          <span className="flex min-w-0 items-center gap-1.5">
+            <Utensils size={15} className="shrink-0" aria-hidden="true" /> <span className="min-w-0 truncate">{spot.priceRange}</span>
           </span>
-          <span className="flex items-center gap-1.5">
-            <Clock size={15} aria-hidden="true" /> {spot.openHours}
+          <span className="flex min-w-0 items-center gap-1.5">
+            <Clock size={15} className="shrink-0" aria-hidden="true" /> <span className="min-w-0 truncate">{spot.openHours}</span>
           </span>
         </div>
       </div>

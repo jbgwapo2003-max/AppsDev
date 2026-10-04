@@ -72,18 +72,18 @@ export function Discovery({ initialSpots }: { initialSpots: SpotSummary[] }) {
       <IntroHero featuredSpot={featuredSpot} />
 
       <main id="discover" className="mx-auto grid min-h-screen max-w-7xl scroll-mt-24 gap-5 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,420px)_1fr] lg:px-8">
-        <section className="order-2 space-y-4 lg:order-1">
+        <section className="order-2 min-w-0 space-y-4 lg:order-1">
           <div className="rounded-lg border border-white/70 bg-rice/80 p-4 shadow-soft backdrop-blur-xl">
             <p className="text-sm font-bold uppercase tracking-[0.18em] text-chili">Philippines streetfood guide</p>
             <h1 className="mt-2 font-display text-4xl font-semibold leading-tight text-charcoal sm:text-5xl">Build the map from real finds.</h1>
             <p className="mt-3 text-base leading-7 text-ink/75">No generated food spots are shown here. Add a stall with photos, prices, map pin, and review categories to start the community guide.</p>
-            <button type="button" onClick={() => setIsSearchOpen(true)} className="mt-5 flex min-h-12 w-full items-center gap-3 rounded-lg border border-charcoal/10 bg-rice/80 px-3 text-left shadow-sm transition hover:border-leaf/40 hover:bg-white focus:outline-none focus:ring-2 focus:ring-leaf">
-              <Search size={20} className="text-leaf" aria-hidden="true" />
-              <span className="text-base text-ink/45">{hasActiveFilters ? `${filteredSpots.length} spot${filteredSpots.length === 1 ? "" : "s"} match your search` : "Search user-added spots..."}</span>
+            <button type="button" onClick={() => setIsSearchOpen(true)} className="mt-5 flex min-h-12 w-full min-w-0 items-center gap-3 rounded-lg border border-charcoal/10 bg-rice/80 px-3 text-left shadow-sm transition hover:border-leaf/40 hover:bg-white focus:outline-none focus:ring-2 focus:ring-leaf">
+              <Search size={20} className="shrink-0 text-leaf" aria-hidden="true" />
+              <span className="min-w-0 truncate text-base text-ink/45">{hasActiveFilters ? `${filteredSpots.length} spot${filteredSpots.length === 1 ? "" : "s"} match your search` : "Search user-added spots..."}</span>
             </button>
           </div>
 
-          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar" aria-label="Popular filters">
+          <div className="-mx-4 flex max-w-[100vw] gap-2 overflow-x-auto px-4 pb-1 no-scrollbar sm:mx-0 sm:max-w-full sm:px-0" aria-label="Popular filters">
             <button type="button" onClick={clearFilters} className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg bg-charcoal px-4 text-sm font-bold text-rice shadow-sm">
               <ListFilter size={17} aria-hidden="true" /> All spots
             </button>
@@ -111,7 +111,7 @@ export function Discovery({ initialSpots }: { initialSpots: SpotSummary[] }) {
           )}
         </section>
 
-        <section className="order-1 lg:sticky lg:top-24 lg:order-2 lg:h-[calc(100vh-110px)]">
+        <section className="order-1 min-w-0 lg:sticky lg:top-24 lg:order-2 lg:h-[calc(100vh-110px)]">
           <div className="mb-3 flex items-center justify-between rounded-lg border border-white/70 bg-rice/80 p-3 shadow-sm backdrop-blur-xl lg:hidden">
             <span className="inline-flex items-center gap-2 text-sm font-bold text-charcoal">
               <MapPinned size={18} aria-hidden="true" /> Map view
@@ -147,15 +147,15 @@ function SearchOverlay({
   onToggleTag: (tag: string) => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 bg-charcoal/55 p-4 backdrop-blur-xl" role="dialog" aria-modal="true" aria-label="Search streetfood spots">
-      <div className="mx-auto mt-20 max-w-4xl overflow-hidden rounded-lg border border-white/70 bg-rice shadow-soft">
-        <div className="flex items-center gap-3 border-b border-charcoal/10 bg-white px-4 py-3">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-charcoal/55 p-4 backdrop-blur-xl" role="dialog" aria-modal="true" aria-label="Search streetfood spots">
+      <div className="mx-auto mt-16 w-full max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border border-white/70 bg-rice shadow-soft sm:mt-20 sm:max-w-4xl">
+        <div className="flex min-w-0 items-center gap-3 border-b border-charcoal/10 bg-white px-4 py-3">
           <Search size={22} className="shrink-0 text-leaf" aria-hidden="true" />
           <input
             autoFocus
             value={query}
             onChange={(event) => onQueryChange(event.target.value)}
-            className="min-h-12 w-full bg-transparent text-lg font-semibold text-charcoal outline-none placeholder:text-ink/45"
+            className="min-h-12 min-w-0 w-full bg-transparent text-base font-semibold text-charcoal outline-none placeholder:text-ink/45 sm:text-lg"
             placeholder="Search Bambi, BBQ, Cebu, spicy..."
             aria-label="Search by stall name, place, description, or tag"
           />
@@ -202,8 +202,8 @@ function SearchOverlay({
             {results.length ? (
               <div className="grid gap-3 sm:grid-cols-2">
                 {results.map((spot) => (
-                  <Link key={spot.id} href={`/spots/${spot.id}`} onClick={onClose} className="rounded-lg border border-charcoal/10 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-soft focus:outline-none focus:ring-2 focus:ring-leaf">
-                    <p className="font-display text-2xl font-semibold leading-tight text-charcoal">{spot.name}</p>
+                  <Link key={spot.id} href={`/spots/${spot.id}`} onClick={onClose} className="min-w-0 rounded-lg border border-charcoal/10 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-soft focus:outline-none focus:ring-2 focus:ring-leaf">
+                    <p className="font-display text-2xl font-semibold leading-tight text-charcoal [overflow-wrap:anywhere]">{spot.name}</p>
                     <p className="mt-1 text-sm text-ink/65">{spot.neighborhood}, {spot.city}</p>
                     <p className="mt-3 line-clamp-2 text-sm leading-6 text-ink/75">{spot.description}</p>
                     <div className="mt-3 flex flex-wrap gap-2">
