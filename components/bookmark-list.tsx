@@ -23,7 +23,6 @@ export function BookmarkList({ spots }: { spots: SpotSummary[] }) {
     return (
       <div className="rounded-lg border border-dashed border-charcoal/20 bg-white p-8 text-center shadow-sm">
         <h2 className="font-display text-3xl font-semibold text-charcoal">No saved spots yet</h2>
-        <p className="mx-auto mt-2 max-w-xl text-base leading-7 text-ink/70">Save stalls from the discovery map or detail pages. Once Supabase is connected, bookmarks will sync to your account.</p>
         <Link href="/" className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-md bg-leaf px-4 text-sm font-bold text-white shadow-pin hover:bg-leaf/90">
           <PlusCircle size={18} aria-hidden="true" /> Explore spots
         </Link>

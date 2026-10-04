@@ -9,10 +9,6 @@ export default function BookmarksPage() {
         <span className="grid size-11 place-items-center rounded-md bg-leaf text-white">
           <Bookmark size={21} aria-hidden="true" />
         </span>
-        <div>
-          <h1 className="font-display text-4xl font-semibold text-charcoal">Bookmarked spots</h1>
-          <p className="text-sm text-ink/70">Sign in with Supabase to sync saved places across devices. Local demo bookmarks are stored in this browser.</p>
-        </div>
       </div>
       <BookmarkList spots={spotSummaries} />
     </main>

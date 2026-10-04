@@ -234,7 +234,6 @@ export function SubmitSpotForm() {
             <Camera size={20} className="text-leaf" aria-hidden="true" />
             <div>
               <p className="font-bold text-charcoal">Photos</p>
-              <p className="text-sm text-ink/65">Wire this field to Supabase Storage in production; schema and bucket policy are included.</p>
             </div>
           </div>
           <input name="photos" type="file" accept="image/*" multiple className="mt-3 block w-full text-sm text-ink/70 file:mr-3 file:min-h-11 file:rounded-md file:border-0 file:bg-charcoal file:px-4 file:text-sm file:font-bold file:text-white" />
