@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Star } from "lucide-react";
 import { reviewCategories } from "@/lib/reviews";
+import { StarRatingInput } from "@/components/star-rating-input";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { ReviewCategory } from "@/lib/types";
 
@@ -56,21 +57,18 @@ export function ReviewComposer({ spotId }: { spotId: string }) {
       <p className="mt-1 text-sm text-ink/70">Rate the details people actually ask about before they line up.</p>
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         {reviewCategories.map((category) => (
-          <label key={category.key} className="rounded-md bg-rice p-3">
+          <div key={category.key} className="rounded-md bg-rice p-3">
             <span className="block text-sm font-bold text-charcoal">{category.label}</span>
             <span className="block text-xs text-ink/65">{category.description}</span>
-            <select
-              value={ratings[category.key]}
-              onChange={(event) => setRatings((current) => ({ ...current, [category.key]: Number(event.target.value) }))}
-              className="mt-2 min-h-11 w-full rounded-md border border-charcoal/15 bg-white px-3 text-sm font-semibold"
-            >
-              {[5, 4, 3, 2, 1].map((value) => (
-                <option key={value} value={value}>
-                  {value} star{value > 1 ? "s" : ""}
-                </option>
-              ))}
-            </select>
-          </label>
+            <div className="mt-2">
+              <StarRatingInput
+                name={`rating-${category.key}`}
+                label={`${category.label} rating`}
+                value={ratings[category.key]}
+                onChange={(value) => setRatings((current) => ({ ...current, [category.key]: value }))}
+              />
+            </div>
+          </div>
         ))}
       </div>
       <label className="mt-4 block">

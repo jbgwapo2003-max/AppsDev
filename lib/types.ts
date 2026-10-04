@@ -2,10 +2,22 @@ export type ReviewCategory = "quantity" | "quality" | "cleanliness" | "value" | 
 
 export type Review = {
   id: string;
+  userId: string;
   userName: string;
+  avatarUrl?: string;
   createdAt: string;
   comment: string;
   ratings: Record<ReviewCategory, number>;
+  helpfulCount: number;
+  viewerHasLiked?: boolean;
+};
+
+export type Profile = {
+  id: string;
+  displayName: string;
+  avatarUrl?: string;
+  bio?: string;
+  createdAt: string;
 };
 
 export type SpotPhoto = {

@@ -7,6 +7,7 @@ import { ArrowLeft, ExternalLink, Flag, MapPin, PhilippinePeso, PlusCircle, Uten
 import { BookmarkButton } from "@/components/bookmark-button";
 import { CategoryBars, RatingPill } from "@/components/rating";
 import { ReviewComposer } from "@/components/review-composer";
+import { ReviewHelpfulButton } from "@/components/review-helpful-button";
 import { ShareButton } from "@/components/share-button";
 import { getLocalSpotById } from "@/lib/local-spots";
 import { getReviewAverage } from "@/lib/reviews";
@@ -109,13 +110,21 @@ export function SpotDetailClient({ id, initialSpot }: { id: string; initialSpot?
               spot.reviews.map((review) => (
                 <article key={review.id} className="rounded-lg border border-charcoal/10 bg-white p-5 shadow-sm">
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="font-bold text-charcoal">{review.userName}</p>
-                      <p className="text-sm text-ink/60">{new Date(review.createdAt).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })}</p>
-                    </div>
+                    <Link href={`/profiles/${review.userId}`} className="flex min-h-11 items-center gap-3 rounded-md pr-2 hover:bg-smoke/70 focus:outline-none focus:ring-2 focus:ring-leaf">
+                      <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-full bg-smoke text-sm font-bold text-leaf">
+                        {review.avatarUrl ? <img src={review.avatarUrl} alt={`${review.userName} profile picture`} className="h-full w-full object-cover" /> : review.userName.slice(0, 1).toUpperCase()}
+                      </span>
+                      <span>
+                        <span className="block font-bold text-charcoal">{review.userName}</span>
+                        <span className="block text-sm text-ink/60">{new Date(review.createdAt).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })}</span>
+                      </span>
+                    </Link>
                     <RatingPill rating={Number(getReviewAverage(review).toFixed(1))} />
                   </div>
                   <p className="mt-3 text-base leading-7 text-ink/80">{review.comment}</p>
+                  <div className="mt-4">
+                    <ReviewHelpfulButton reviewId={review.id} initialCount={review.helpfulCount} initiallyLiked={review.viewerHasLiked} />
+                  </div>
                 </article>
               ))
             ) : (

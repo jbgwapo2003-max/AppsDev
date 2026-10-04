@@ -2,7 +2,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCategoryAverages, getSpotAverage } from "@/lib/reviews";
 import type { Review, SpotPhoto, SpotPrice, SpotSummary } from "@/lib/types";
 
-type SpotRow = {
+export type SpotRow = {
   id: string;
   name: string;
   description: string;
@@ -34,6 +34,7 @@ type PriceRow = {
 
 type ReviewRow = {
   id: string;
+  user_id: string;
   comment: string;
   quantity_rating: number;
   quality_rating: number;
@@ -41,6 +42,12 @@ type ReviewRow = {
   value_rating: number;
   service_rating: number;
   created_at: string;
+  profiles?: {
+    id: string;
+    display_name: string | null;
+    avatar_url: string | null;
+  } | { id: string; display_name: string | null; avatar_url: string | null }[] | null;
+  review_likes?: { user_id: string }[];
 };
 
 const spotSelect = `
@@ -57,12 +64,26 @@ const spotSelect = `
   tags,
   spot_photos(id, storage_path, alt_text),
   spot_prices(id, item, price_php, notes),
-  reviews(id, comment, quantity_rating, quality_rating, cleanliness_rating, value_rating, service_rating, created_at)
+  reviews(
+    id,
+    user_id,
+    comment,
+    quantity_rating,
+    quality_rating,
+    cleanliness_rating,
+    value_rating,
+    service_rating,
+    created_at,
+    profiles(id, display_name, avatar_url),
+    review_likes(user_id)
+  )
 `;
 
 export async function getSupabaseSpotSummaries(): Promise<SpotSummary[]> {
   const supabase = await createSupabaseServerClient();
   if (!supabase) return [];
+  const { data: authData } = await supabase.auth.getUser();
+  const viewerId = authData.user?.id;
 
   const { data, error } = await supabase
     .from("streetfood_spots")
@@ -72,12 +93,14 @@ export async function getSupabaseSpotSummaries(): Promise<SpotSummary[]> {
 
   if (error || !data) return [];
 
-  return (data as SpotRow[]).map((spot) => mapSpotRow(spot));
+  return (data as unknown as SpotRow[]).map((spot) => mapSpotRow(spot, viewerId));
 }
 
 export async function getSupabaseSpotById(id: string): Promise<SpotSummary | null> {
   const supabase = await createSupabaseServerClient();
   if (!supabase) return null;
+  const { data: authData } = await supabase.auth.getUser();
+  const viewerId = authData.user?.id;
 
   const { data, error } = await supabase
     .from("streetfood_spots")
@@ -88,11 +111,11 @@ export async function getSupabaseSpotById(id: string): Promise<SpotSummary | nul
 
   if (error || !data) return null;
 
-  return mapSpotRow(data as SpotRow);
+  return mapSpotRow(data as unknown as SpotRow, viewerId);
 }
 
-function mapSpotRow(spot: SpotRow): SpotSummary {
-  const reviews = mapReviews(spot.reviews ?? []);
+export function mapSpotRow(spot: SpotRow, viewerId?: string): SpotSummary {
+  const reviews = mapReviews(spot.reviews ?? [], viewerId);
 
   return {
     id: spot.id,
@@ -115,7 +138,7 @@ function mapSpotRow(spot: SpotRow): SpotSummary {
   };
 }
 
-function mapPhotos(photos: PhotoRow[]): SpotPhoto[] {
+export function mapPhotos(photos: PhotoRow[]): SpotPhoto[] {
   return photos.map((photo) => ({
     id: photo.id,
     url: getPublicPhotoUrl(photo.storage_path),
@@ -123,7 +146,7 @@ function mapPhotos(photos: PhotoRow[]): SpotPhoto[] {
   }));
 }
 
-function mapPrices(prices: PriceRow[]): SpotPrice[] {
+export function mapPrices(prices: PriceRow[]): SpotPrice[] {
   return prices.map((price) => ({
     id: price.id,
     item: price.item,
@@ -132,12 +155,16 @@ function mapPrices(prices: PriceRow[]): SpotPrice[] {
   }));
 }
 
-function mapReviews(reviews: ReviewRow[]): Review[] {
+export function mapReviews(reviews: ReviewRow[], viewerId?: string): Review[] {
   return reviews.map((review) => ({
     id: review.id,
-    userName: "Kanto Finds user",
+    userId: review.user_id,
+    userName: getReviewProfile(review)?.display_name || "Kanto Finds user",
+    avatarUrl: getReviewProfile(review)?.avatar_url ?? undefined,
     createdAt: review.created_at,
     comment: review.comment,
+    helpfulCount: review.review_likes?.length ?? 0,
+    viewerHasLiked: viewerId ? review.review_likes?.some((like) => like.user_id === viewerId) : false,
     ratings: {
       quantity: review.quantity_rating,
       quality: review.quality_rating,
@@ -146,6 +173,10 @@ function mapReviews(reviews: ReviewRow[]): Review[] {
       service: review.service_rating
     }
   }));
+}
+
+function getReviewProfile(review: ReviewRow) {
+  return Array.isArray(review.profiles) ? review.profiles[0] : review.profiles;
 }
 
 function getPublicPhotoUrl(path: string) {

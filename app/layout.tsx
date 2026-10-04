@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Bookmark, MapPin, PlusCircle, Search } from "lucide-react";
+import { AuthNav } from "@/components/auth-nav";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -37,9 +38,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
                 <PlusCircle size={18} aria-hidden="true" /> Share a spot
               </Link>
             </div>
-            <Link className="inline-flex min-h-11 items-center rounded-lg border border-white/20 bg-white/10 px-4 text-sm font-bold text-white shadow-sm backdrop-blur hover:bg-white/20" href="/login">
-              Sign in
-            </Link>
+            <AuthNav />
           </nav>
         </header>
         {children}

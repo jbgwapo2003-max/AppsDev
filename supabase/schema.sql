@@ -4,9 +4,12 @@ create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   display_name text,
   avatar_url text,
+  bio text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.profiles add column if not exists bio text;
 
 create table if not exists public.streetfood_spots (
   id uuid primary key default gen_random_uuid(),
@@ -66,6 +69,13 @@ create table if not exists public.reviews (
   unique (spot_id, user_id)
 );
 
+create table if not exists public.review_likes (
+  review_id uuid not null references public.reviews(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (review_id, user_id)
+);
+
 create table if not exists public.reports (
   id uuid primary key default gen_random_uuid(),
   reporter_id uuid not null references public.profiles(id) on delete cascade,
@@ -96,6 +106,7 @@ alter table public.spot_photos enable row level security;
 alter table public.spot_prices enable row level security;
 alter table public.bookmarks enable row level security;
 alter table public.reviews enable row level security;
+alter table public.review_likes enable row level security;
 alter table public.reports enable row level security;
 
 create policy "Profiles are readable" on public.profiles for select using (true);
@@ -155,10 +166,28 @@ create policy "Users create own reviews" on public.reviews for insert with check
 create policy "Users update own reviews" on public.reviews for update using (auth.uid() = user_id);
 create policy "Users delete own reviews" on public.reviews for delete using (auth.uid() = user_id);
 
+drop policy if exists "Review likes are public" on public.review_likes;
+create policy "Review likes are public" on public.review_likes for select using (
+  exists (
+    select 1
+    from public.reviews r
+    join public.streetfood_spots s on s.id = r.spot_id
+    where r.id = review_id and s.status = 'visible'
+  )
+);
+drop policy if exists "Users create own review likes" on public.review_likes;
+create policy "Users create own review likes" on public.review_likes for insert with check (auth.uid() = user_id);
+drop policy if exists "Users delete own review likes" on public.review_likes;
+create policy "Users delete own review likes" on public.review_likes for delete using (auth.uid() = user_id);
+
 create policy "Users create own reports" on public.reports for insert with check (auth.uid() = reporter_id);
 
 insert into storage.buckets (id, name, public)
 values ('spot-photos', 'spot-photos', true)
+on conflict (id) do nothing;
+
+insert into storage.buckets (id, name, public)
+values ('profile-avatars', 'profile-avatars', true)
 on conflict (id) do nothing;
 
 create policy "Spot photos are publicly readable"
@@ -168,3 +197,19 @@ using (bucket_id = 'spot-photos');
 create policy "Authenticated users upload spot photos"
 on storage.objects for insert
 with check (bucket_id = 'spot-photos' and auth.role() = 'authenticated');
+
+drop policy if exists "Profile avatars are publicly readable" on storage.objects;
+create policy "Profile avatars are publicly readable"
+on storage.objects for select
+using (bucket_id = 'profile-avatars');
+
+drop policy if exists "Users upload own profile avatars" on storage.objects;
+create policy "Users upload own profile avatars"
+on storage.objects for insert
+with check (bucket_id = 'profile-avatars' and auth.uid()::text = (storage.foldername(name))[1]);
+
+drop policy if exists "Users update own profile avatars" on storage.objects;
+create policy "Users update own profile avatars"
+on storage.objects for update
+using (bucket_id = 'profile-avatars' and auth.uid()::text = (storage.foldername(name))[1])
+with check (bucket_id = 'profile-avatars' and auth.uid()::text = (storage.foldername(name))[1]);

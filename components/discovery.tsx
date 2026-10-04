@@ -27,7 +27,7 @@ export function Discovery({ initialSpots }: { initialSpots: SpotSummary[] }) {
 
   return (
     <>
-      {isLoading ? <HourglassLoader /> : null}
+      {isLoading ? <NewtonsCradleLoader /> : null}
 
       <IntroHero featuredSpot={featuredSpot} />
 
@@ -81,22 +81,17 @@ export function Discovery({ initialSpots }: { initialSpots: SpotSummary[] }) {
   );
 }
 
-function HourglassLoader() {
+function NewtonsCradleLoader() {
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-charcoal text-rice" role="status" aria-live="polite" aria-label="Loading Kanto Finds">
-      <div className="text-center">
-        <div className="hourglassBackground" aria-hidden="true">
-          <div className="hourglassContainer">
-            <div className="hourglassCurves"></div>
-            <div className="hourglassCapTop"></div>
-            <div className="hourglassGlassTop"></div>
-            <div className="hourglassSand"></div>
-            <div className="hourglassSandStream"></div>
-            <div className="hourglassCapBottom"></div>
-            <div className="hourglassGlass"></div>
-          </div>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-charcoal/50 text-rice backdrop-blur-xl" role="status" aria-live="polite" aria-label="Loading Kanto Finds">
+      <div className="rounded-lg border border-white/15 bg-charcoal/70 px-8 py-7 text-center shadow-soft">
+        <div className="newtons-cradle mx-auto" aria-hidden="true">
+          <div className="newtons-cradle__dot"></div>
+          <div className="newtons-cradle__dot"></div>
+          <div className="newtons-cradle__dot"></div>
+          <div className="newtons-cradle__dot"></div>
         </div>
-        <p className="mt-4 text-sm font-bold uppercase tracking-[0.28em] text-rice/75">Loading fresh finds</p>
+        <p className="mt-5 text-sm font-bold uppercase tracking-[0.28em] text-rice/75">Loading fresh finds</p>
       </div>
     </div>
   );
